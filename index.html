@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Khám phá trường học thông minh - Smart School Exploration</title>
+  
+  <!-- Nhúng phông chữ Outfit và Press Start 2P từ Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+  
+  <!-- Nhúng thư viện NES.css phong cách 8-bit retro -->
+  <link href="https://unpkg.com/nes.css@latest/css/nes.min.css" rel="stylesheet" />
+  
+  <link rel="stylesheet" href="css/style.css?v=10">
+</head>
+<body>
+
+  <!-- Khung Giao Diện Chính -->
+  <div id="app-container">
+    <header class="retro-header">
+      <div class="logo">
+        <span class="logo-icon">🏫</span>
+        <h1 class="retro-title">Khám phá trường học thông minh</h1>
+      </div>
+      <div class="stats-panel">
+        <div class="stat-item compact-stat">
+          <span class="stat-label">🏆 Điểm số:</span>
+          <span id="score-val" class="stat-value">0</span>
+        </div>
+        <div class="stat-item compact-stat">
+          <span class="stat-label">🔍 Khám phá:</span>
+          <span id="progress-val" class="stat-value">0/6</span>
+        </div>
+        <button id="btn-return-map" class="retro-return-btn">
+          Trở lại bản đồ
+        </button>
+      </div>
+    </header>
+
+    <main class="game-layout">
+      <!-- Màn hình bản đồ trường học (Overworld) -->
+      <div id="overworld-view" class="view-section active">
+        <div class="canvas-wrapper">
+          <canvas id="game-canvas" width="1024" height="576"></canvas>
+          
+          <!-- Joystick ảo di chuyển cho tablet cảm ứng -->
+          <div id="virtual-joystick-container">
+            <div id="virtual-joystick-knob"></div>
+          </div>
+
+          <!-- Pop-up Loa Thông Minh AI Nổi Trên Bản Đồ (Tối giản 1/4 kích thước) -->
+          <div id="speaker-popup" class="hidden compact-speaker-popup">
+            <div class="speaker-popup-header">
+              <span class="speaker-popup-title">🔊 Loa AI</span>
+              <button id="btn-close-speaker-popup" class="speaker-popup-close-btn">&times;</button>
+            </div>
+            
+            <div class="speaker-popup-content">
+              <!-- Nút Mic tròn và menu select dropdown nằm chung một hàng ngang -->
+              <button id="btn-speaker-popup-mic" class="speaker-popup-mic-btn" title="Nói lệnh">🎙️</button>
+              <select id="speaker-cmd-dropdown" class="speaker-dropdown">
+                <option value="" disabled selected>⚡ Lệnh nhanh...</option>
+                <option value="Thời tiết hôm nay thế nào?">🌤️ Hỏi thời tiết</option>
+                <option value="Kể một sự thật thú vị về khoa học.">🧪 Sự thật khoa học</option>
+                <option value="Mở đèn phòng học.">💡 Mở đèn Lớp 6A</option>
+                <option value="Tắt đèn phòng học.">🔌 Tắt đèn Lớp 6A</option>
+                <option value="Mở đèn thư viện.">💡 Mở đèn Thư viện</option>
+                <option value="Tắt đèn thư viện.">🔌 Tắt đèn Thư viện</option>
+                <option value="Mở đèn phòng cờ vua.">💡 Mở đèn Phòng cờ</option>
+                <option value="Tắt đèn phòng cờ vua.">🔌 Tắt đèn Phòng cờ</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Màn hình tương tác cận cảnh (Close-up Modals) -->
+      <div id="close-up-view" class="view-section">
+        <div class="close-up-container glass-card">
+          <div class="close-up-content">
+            <!-- 1. AI Facial Recognition Attendance Device -->
+            <div id="device-attendance" class="device-panel">
+              <h2>📷 Điểm Danh Khuôn Mặt AI</h2>
+              <p class="device-desc">Đứng trước máy quét tại cổng trường để điểm danh tự động bằng công nghệ nhận dạng khuôn mặt.</p>
+              
+              <div class="attendance-simulator">
+                <div class="camera-frame">
+                  <div class="camera-lens"></div>
+                  <div class="camera-viewport">
+                    <canvas id="attendance-camera-canvas" width="480" height="360"></canvas>
+                    <div id="scan-bounding-box" class="bounding-box hidden"></div>
+                    <div id="scan-line" class="scan-line hidden"></div>
+                    <div id="attendance-avatar-pic" class="avatar-placeholder">Camera đang tắt</div>
+                  </div>
+                </div>
+                
+                <div class="camera-controls">
+                  <button id="btn-toggle-camera" class="btn-primary">Bật Camera</button>
+                  <div class="scan-progress-container hidden" id="scan-progress-area">
+                    <div class="progress-bar-wrapper">
+                      <div class="progress-bar" id="attendance-progress-bar"></div>
+                    </div>
+                    <span class="status-text" id="attendance-status">Đang phân tích đặc trưng khuôn mặt...</span>
+                  </div>
+                  <div id="attendance-result" class="result-box hidden"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Smart Interactive Screen & AI Avatar -->
+            <div id="device-screen" class="device-panel">
+              <h2>🖥️ Màn Hình Tương Tác Thông Minh</h2>
+              <p class="device-desc">Nhấp chọn các câu hỏi học tập dưới đây để trợ lý DIGI phản hồi bằng mô hình trực quan và giọng nói.</p>
+              
+              <div class="digi-simulator">
+                <div class="digi-board">
+                  <div class="digi-screen-left">
+                    <div class="avatar-container">
+                      <canvas id="digi-avatar-canvas" width="240" height="240"></canvas>
+                    </div>
+                    <div id="digi-speech-bubble" class="speech-bubble">Xin chào Minh! Hãy đặt câu hỏi cho mình nhé.</div>
+                  </div>
+                  <div class="digi-screen-right" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div class="visual-whiteboard">
+                      <canvas id="whiteboard-canvas" class="hidden" width="500" height="280"></canvas>
+                    </div>
+                    <div class="digi-controls">
+                      <div class="quick-questions-container" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%;">
+                        <button class="btn-quick-q" data-q="Sao Hỏa có màu gì?" style="padding: 10px 4px; font-size: 11px; text-align: center; width: 100%;">Sao Hỏa có màu gì?</button>
+                        <button class="btn-quick-q" data-q="AI học như thế nào?" style="padding: 10px 4px; font-size: 11px; text-align: center; width: 100%;">AI học như thế nào?</button>
+                        <button class="btn-quick-q" data-q="Làm sao bảo mật trực tuyến?" style="padding: 10px 4px; font-size: 11px; text-align: center; width: 100%;">Làm sao bảo mật trực tuyến?</button>
+                        <button class="btn-quick-q" data-q="Thế nào là công dân số tốt?" style="padding: 10px 4px; font-size: 11px; text-align: center; width: 100%;">Thế nào là công dân số tốt?</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Smart Language Translation Pen -->
+            <div id="device-translation-pen" class="device-panel">
+              <h2>🖊️ Bút Dịch Thuật Thông Minh</h2>
+              <p class="device-desc">Nhấp giữ và kéo bút quét qua các từ hoặc cụm từ tiếng Anh dưới đây để dịch thời gian thực.</p>
+              
+              <div class="translation-simulator">
+                <div class="textbook-container">
+                  <h3>Sách Giáo Khoa Công Dân Số</h3>
+                  <div class="scannable-line-container">
+                    <div id="scannable-line" class="scannable-text" style="user-select: none;">
+                      <!-- Nội dung các trang sẽ được render động từ JS -->
+                    </div>
+                    <div id="drag-pen-cursor" class="pen-cursor-glow hidden">
+                      <div class="pen-body-visual">
+                        <div class="pen-shaft"></div>
+                        <div class="pen-tip"></div>
+                        <div class="pen-laser-dot"></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Điều hướng lật trang sách -->
+                  <div class="book-navigation" style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 10px; cursor: default;">
+                    <button id="btn-prev-page" class="btn-page-nav" disabled>◀ Trang trước</button>
+                    <span id="page-indicator" style="font-size: 12px; font-weight: bold; color: #475569; user-select: none;">Trang 1 / 3</span>
+                    <button id="btn-next-page" class="btn-page-nav">Trang sau ▶</button>
+                  </div>
+                </div>
+                
+                <div class="pen-device">
+                  <div class="pen-oled-screen">
+                    <div id="pen-screen-loading" class="hidden">Đang dịch...</div>
+                    <div id="pen-screen-result">
+                      <span class="pen-title">OLED MONITOR V2.0</span>
+                      <p class="translation-placeholder">Bút đã sẵn sàng quét...</p>
+                    </div>
+                  </div>
+                  <div class="pen-controls">
+                    <button id="btn-pen-pronounce" class="btn-primary" disabled>🔊 Nghe phát âm</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Smart Library Kiosk -->
+            <div id="device-library" class="device-panel">
+              <h2>📚 Kiot Thư Viện Thông Minh</h2>
+              <p class="device-desc">Nhấp chọn thể loại sách em thích hoặc nhập từ khóa. Bản đồ sẽ chỉ đường cho em đi tới đúng kệ sách nhé!</p>
+              
+              <div class="library-simulator">
+                <div class="kiosk-left-panel">
+                  <!-- Các nút thể loại sách nhanh dành cho học sinh lớp 2 -->
+                  <div class="kiosk-categories">
+                    <span class="category-title">👉 Nhấp chọn thể loại sách em thích:</span>
+                    <div class="category-buttons">
+                      <button class="btn-category cat-fairy" data-genre="cổ tích">📖 Cổ Tích</button>
+                      <button class="btn-category cat-science" data-genre="khoa học">🦖 Khoa Học</button>
+                      <button class="btn-category cat-history" data-genre="lịch sử">📜 Lịch Sử</button>
+                      <button class="btn-category cat-math" data-genre="toán học">🔢 Toán Học</button>
+                      <button class="btn-category cat-comic" data-genre="truyện tranh">🎨 Truyện Tranh</button>
+                      <button class="btn-category cat-skill" data-genre="kỹ năng">🌟 Kỹ Năng</button>
+                    </div>
+                  </div>
+
+                  <div class="kiosk-search-box">
+                    <input type="text" id="kiosk-search-input" placeholder="Nhập tên sách em muốn tìm...">
+                    <button id="btn-kiosk-search" class="btn-primary">Tìm Sách</button>
+                  </div>
+                  <div class="books-result-list" id="kiosk-results">
+                    <div class="no-result">Chưa chọn cuốn sách nào.</div>
+                  </div>
+                </div>
+                
+                <div class="kiosk-right-panel">
+                  <div class="map-label">Bản đồ định vị kệ sách trong thư viện</div>
+                  <div class="library-map-wrapper">
+                    <canvas id="library-map-canvas" width="450" height="360"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. Smart Chessboard -->
+            <div id="device-chessboard" class="device-panel">
+              <h2>♟️ Bàn Cờ Vua Thông Minh</h2>
+              <p class="device-desc">Di chuyển quân cờ Trắng của bạn, thuật toán AI sẽ phân tích nước đi và di chuyển quân Đen đáp trả.</p>
+              
+              <div class="chess-simulator">
+                <div class="chessboard-container">
+                  <div id="chess-board-ui" class="chess-board">
+                    <!-- Bàn cờ sẽ được khởi tạo động từ JS -->
+                  </div>
+                </div>
+                <div class="chess-info-panel">
+                  <div class="chess-log">
+                    <h3>Nhật ký ván đấu</h3>
+                    <div id="chess-log-content">Lượt đi: Trắng (Bạn). Bắt đầu ván đấu.</div>
+                  </div>
+                  <div class="chess-evaluation" id="chess-eval-box">
+                    <span class="eval-label">Phân tích của AI:</span>
+                    <span id="chess-eval-text">Chưa có nước đi nào.</span>
+                  </div>
+                  <div class="chess-controls">
+                    <button id="btn-chess-reset" class="btn-secondary">Chơi lại ván mới</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Bộ lọc SVG tạo hiệu ứng loang màu nước / loang mực nghệ thuật -->
+  <svg style="display: none;">
+    <filter id="ink-bleed">
+      <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="35" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
+
+  <!-- Import mã nguồn Javascript trò chơi -->
+  <script type="module" src="js/game.js"></script>
+</body>
+</html>
