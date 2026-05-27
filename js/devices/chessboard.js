@@ -462,6 +462,58 @@ export const ChessboardHandler = {
     return score;
   },
 
+  minimax(board, depth, alpha, beta, isMaximizing) {
+    if (depth === 0) {
+      return this.evaluateBoard(board);
+    }
+
+    if (isMaximizing) { // Lượt của Đen (AI) - Tối đa hóa điểm số
+      let maxEval = -Infinity;
+      const moves = this.getPossibleMoves(board, 'black');
+      if (moves.length === 0) return this.evaluateBoard(board);
+
+      for (let move of moves) {
+        const piece = board[move.fromRow][move.fromCol];
+        const target = board[move.toRow][move.toCol];
+
+        board[move.toRow][move.toCol] = piece;
+        board[move.fromRow][move.fromCol] = '';
+
+        const evaluation = this.minimax(board, depth - 1, alpha, beta, false);
+
+        board[move.fromRow][move.fromCol] = piece;
+        board[move.toRow][move.toCol] = target;
+
+        maxEval = Math.max(maxEval, evaluation);
+        alpha = Math.max(alpha, evaluation);
+        if (beta <= alpha) break; // Cắt tỉa Alpha-Beta
+      }
+      return maxEval;
+    } else { // Lượt của Trắng (Người chơi) - Tối thiểu hóa điểm số
+      let minEval = Infinity;
+      const moves = this.getPossibleMoves(board, 'white');
+      if (moves.length === 0) return this.evaluateBoard(board);
+
+      for (let move of moves) {
+        const piece = board[move.fromRow][move.fromCol];
+        const target = board[move.toRow][move.toCol];
+
+        board[move.toRow][move.toCol] = piece;
+        board[move.fromRow][move.fromCol] = '';
+
+        const evaluation = this.minimax(board, depth - 1, alpha, beta, true);
+
+        board[move.fromRow][move.fromCol] = piece;
+        board[move.toRow][move.toCol] = target;
+
+        minEval = Math.min(minEval, evaluation);
+        beta = Math.min(beta, evaluation);
+        if (beta <= alpha) break; // Cắt tỉa Alpha-Beta
+      }
+      return minEval;
+    }
+  },
+
   executeAIMove() {
     let bestMove = null;
     let bestValue = -Infinity;
@@ -474,7 +526,16 @@ export const ChessboardHandler = {
     if (this.boardState[4][4] === '♙' && this.boardState[1][4] === '♟' && this.boardState[3][4] === '') {
       bestMove = { fromRow: 1, fromCol: 4, toRow: 3, toCol: 4 };
     } else {
-      // Chạy MiniMax tìm nước đi tốt nhất cho quân Đen
+      // Sắp xếp nước đi (Move Ordering) để tối ưu hóa việc cắt tỉa Alpha-Beta
+      blackMoves.sort((a, b) => {
+        const aTarget = tempBoard[a.toRow][a.toCol];
+        const bTarget = tempBoard[b.toRow][b.toCol];
+        const aVal = aTarget !== '' ? 1 : 0;
+        const bVal = bTarget !== '' ? 1 : 0;
+        return bVal - aVal;
+      });
+
+      // Chạy MiniMax kèm cắt tỉa Alpha-Beta để tìm nước đi tốt nhất
       for (let move of blackMoves) {
         const sourcePiece = tempBoard[move.fromRow][move.fromCol];
         const targetPiece = tempBoard[move.toRow][move.toCol];
@@ -483,41 +544,16 @@ export const ChessboardHandler = {
         tempBoard[move.toRow][move.toCol] = sourcePiece;
         tempBoard[move.fromRow][move.fromCol] = '';
         
-        // Tìm nước phản hồi tốt nhất của Trắng (Trắng muốn tối thiểu hóa điểm số của Đen)
-        const whiteMoves = this.getPossibleMoves(tempBoard, 'white');
-        let minWhiteValue = Infinity;
-        
-        for (let wMove of whiteMoves) {
-          const wSource = tempBoard[wMove.fromRow][wMove.fromCol];
-          const wTarget = tempBoard[wMove.toRow][wMove.toCol];
-          
-          // Thử nước đi của Trắng
-          tempBoard[wMove.toRow][wMove.toCol] = wSource;
-          tempBoard[wMove.fromRow][wMove.fromCol] = '';
-          
-          const val = this.evaluateBoard(tempBoard);
-          if (val < minWhiteValue) {
-            minWhiteValue = val;
-          }
-          
-          // Hoàn tác nước đi của Trắng
-          tempBoard[wMove.fromRow][wMove.fromCol] = wSource;
-          tempBoard[wMove.toRow][wMove.toCol] = wTarget;
-        }
-        
-        if (whiteMoves.length === 0) {
-          minWhiteValue = this.evaluateBoard(tempBoard);
-        }
-        
-        // Đen chọn nước đi tối đa hóa điểm số
-        if (minWhiteValue > bestValue) {
-          bestValue = minWhiteValue;
-          bestMove = move;
-        }
+        const val = this.minimax(tempBoard, 1, -Infinity, Infinity, false);
         
         // Hoàn tác nước đi của Đen
         tempBoard[move.fromRow][move.fromCol] = sourcePiece;
         tempBoard[move.toRow][move.toCol] = targetPiece;
+        
+        if (val > bestValue) {
+          bestValue = val;
+          bestMove = move;
+        }
       }
     }
     
